@@ -1,6 +1,6 @@
 # Preliminary, to set up data & code
 
-# setwd("~/Dropbox//Gentians")
+ setwd("Gentians")
 
 # Data from Marc Ker[r]y's Gentian example in the OpenBUGS examples
 Data=list(y= structure(.Data= c(0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 

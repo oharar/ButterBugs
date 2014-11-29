@@ -94,15 +94,18 @@ GetModel <- function(obj) {
   names(obj$DataToModel) <- names(obj$data)[UseNames]
   
   
-# Need to sort this out, to get the correct elngths and make sure that variables being used as indices are included.
+# Need to sort this out, to get the correct lengths and make sure that variables being used as indices are included.
   
   # add correct index lengths
   #  I'm sure this can be improved a lot - it feels a bit messy
   # Extract indices and their limits
   mod.split <- strsplit(obj$model$model, "\n", fixed=TRUE)[[1]]
-  mod.ind <- mod.split[grep('for[[:blank:]]*\\(', mod.split)]
+  wh.ind <- grep('for[[:blank:]]*\\(', mod.split)
+  mod.ind <- mod.split[wh.ind]
   ind <- gsub(' in.*',"", gsub('^.*\\(', "", mod.ind))
   Max.ind <- gsub('\\).*',"", gsub('^.*:', "", mod.ind))
+# Get variables with this index
+
 
   VarsWithIndex <- sapply(NameInModel, function(name, vars) vars[grep(name, vars)], vars=obj$model$variables)
   IndexofVarsWithIndex <- sapply(VarsWithIndex, function(ind, inds) {
