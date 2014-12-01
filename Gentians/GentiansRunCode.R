@@ -22,134 +22,82 @@
 #   - tag: unique tag
 
 setwd("Gentians")
+library(BRugs)
+source("GentiansFunctions.R")
 
 procdata=read.csv("GentiansSite.csv")
 obsdata=read.csv("GentiansObs.csv")
 # Make wetness in obs model different to the one in the process model
- obsdata$wetness2=procdata$wetness[obsdata$Site]
+ obsdata$wetness2=procdata$wetness[obsdata$site]
 
 procobj=list(
   data=procdata,
   modelfile="ProcessModel.bug",
-  tag="proc"
+  tag="occ" # "proc"
 )
 
 Obslist=list(
   list(
     data=obsdata,
     modelfile="ObservationModel.bug",
-    tag="survey"
+    tag="p" # "survey"
   )
 )
   
-
-
-# Need to parse and edit vars correctly!
-FormatModel <- function(filename, tag) {
-    proc.mod <- scan(filename, what="character", sep="\n")
-# Extract variable names (need to parse correctly)
-    vars.str <- proc.mod[grep(".tag", proc.mod, fixed=TRUE)]
-# str <- unlist(strsplit(vars.str, "[ \\(\\)]"))
-    str <- unlist(strsplit(vars.str, "[]\\[ \\:\\(\\)]"))
-# Don't need all of these (yet!)
-    vars.tag <- unique(str[grep(".tag", str)])
-    vars.index <- unique(str[grep(".index", str)])
-    vars.univ <- unique(str[grep(".univ", str)])
-
-# Extract indices
-# Some of this replicates pulling out other code
-    inds <- proc.mod[grep(".index", proc.mod, fixed=TRUE)]
-    str <- strsplit(inds, '[ :)]')[[1]]
-    max.indices <- str[grep('\\.index', str)]
-    tag.indices <- gsub("\\(","",str[grep('\\.tag', str)])
-
-    proc.mod <- paste(proc.mod, collapse="\n")
-    proc.mod <- gsub('\\}$', "", gsub('model[[:space:]]\\{',"",proc.mod))
-    proc.mod <- gsub(".tag", paste(".", tag,sep=""), proc.mod, fixed=TRUE)
-    proc.mod <- gsub(".index", paste(".", tag,sep=""), proc.mod, fixed=TRUE)
-    mod <- list(model=proc.mod, variables=vars.tag, universals=vars.univ, Indices=tag.indices, maxIndices=max.indices)
-    mod
-}
-
-# Function to get object model and data, and format them
-GetModel <- function(obj) {
-  #  obj <- procobj
-  #  obj <- Obslist[[1]]
-  # Read in processmodel
-  obj$model <- FormatModel(filename=obj$modelfile, tag=obj$tag)
-  
-  # Check which variables in the data are in the model
-  # Add data to be sent to BUGS
-  # This should probably be put in a function
-  NameInModel.tag <- names(obj$data)[sapply(paste(names(obj$data), ".tag", sep=""), function(str, strgs) length(grep(str, strgs))>0, strgs=obj$model$variables)]
-  NameInModel.univ <- names(obj$data)[sapply(paste(names(obj$data), ".univ", sep=""), function(str, strgs) length(grep(str, strgs))>0, strgs=obj$model$variables)]
-  NameInModel <- c(NameInModel.tag, NameInModel.univ)
-  UseNames <- names(obj$data)%in%NameInModel
-  if(sum(UseNames)==0) warning("No data being used")
-    if(sum(UseNames)==1) {
-      obj$DataToModel <- list(obj$data[,UseNames])
-  } else {
-    obj$DataToModel <- as.list(obj$data[,UseNames])
-  }
-  names(obj$DataToModel) <- names(obj$data)[UseNames]
-  
-  
-# Need to sort this out, to get the correct elngths and make sure that variables being used as indices are included.
-  
-  # add correct index lengths
-  #  I'm sure this can be improved a lot - it feels a bit messy
-  # Extract indices and their limits
-  mod.split <- strsplit(obj$model$model, "\n", fixed=TRUE)[[1]]
-  mod.ind <- mod.split[grep('for[[:blank:]]*\\(', mod.split)]
-  ind <- gsub(' in.*',"", gsub('^.*\\(', "", mod.ind))
-  Max.ind <- gsub('\\).*',"", gsub('^.*:', "", mod.ind))
-
-  VarsWithIndex <- sapply(NameInModel, function(name, vars) vars[grep(name, vars)], vars=obj$model$variables)
-  IndexofVarsWithIndex <- sapply(VarsWithIndex, function(ind, inds) {
-    strs <- strsplit(ind, '[]\\[]')[[1]]
-    strs[strs%in%inds]
-  }, inds=obj$model$Indices)
-    
-  Lengths <- sapply(NameInModel, function(name, lst) length(lst[[name]]), lst=obj$DataToModel)
-    names(Lengths) <- sapply(names(Lengths), function(names) IndexofVarsWithIndex[grep(names,  VarsWithIndex, fixed=TRUE)])
-  
-  Len <- sapply(unique(names(Lengths)), function(ind, lens) {
-    ll <- lens[names(lens)==ind]
-    if(any(ll!=ll[1])) stop("Not all variables with same index have same length")
-    len <- ll[1]
-    names(len) <- NULL
-    len
-  }, lens=Lengths)
-  
-  obj$DataToModel[[obj$model$maxIndices]] <- Len[which(obj$model$Indices==names(Len))]
-  names(obj$DataToModel[[obj$model$maxIndices]]) <- NULL
-  
-# rename indices with tag
-  names(obj$DataToModel) <- gsub(".index", paste(".",obj$tag, sep=""), names(obj$DataToModel))
-  
-  obj
-}
-
-
 # Check tags are unique: the stop() is because I expect this to end up in a function
 tags <- c(procobj$tag, unlist(lapply(Obslist, function(lst) lst$tag)))
 if(length(tags)>length(unique(tags))) stop("Not all tags are unique")
 
-
 # Read in process model
 ProcObj <- GetModel(procobj)
-# Read in observation models
+# Read in observation model(s)
 ObsObjs <- lapply(Obslist, GetModel)
-  
 
+# Paste models together & save the code
 AllModels <- paste("model {", ProcObj$model$model, lapply(ObsObjs, function(lst) lst$model$model), "}",sep="\n")
 cat(AllModels, file="GentianAll.txt")
 
+# Merge data
 AllData <- unlist(list(ProcObj$DataToModel, unlist(lapply(ObsObjs, function(lst) lst$DataToModel), recursive=FALSE)), recursive=FALSE)
 
+# Add tags to variable names: have to check the model to see that they're right
+names(AllData) <- sapply(names(AllData), function(Name, Model, tags) {
+#  Name <- names(AllData)[3]
+  if(any(sapply(paste('\\.', tags,"$", sep=""), function(tag, nm) grepl(tag, nm), nm=Name))) {
+    fullvar <- Name
+  } else {
+    fullvar <- gsub(paste('.*', Name, '\\.', sep=""), paste(Name, '\\.', sep=""), Model)
+    fullvar <- gsub('\\[.*', "", fullvar)
+    var.tag=paste(Name, tags, sep=".")
+    if(any(!fullvar%in%var.tag))  stop("No unique name for variable")
+  }
+  fullvar
+}, Model=AllModels, tags=c("univ", ProcObj$tag, unlist(lapply(ObsObjs, function(lst) lst$tag))))
+
+# manually add z's where sp observed at least once
+AllData$z.univ <- c(ifelse(tapply(AllData$y.p, list(AllData$site.p), function(vec) any(vec>0)), 1,NA))
+  
 bugsData(AllData, "GentianAllData.txt")
+
+# Get the variables: all & then the alpha's & beta's
+AllVars <- unique(c(
+  ProcObj$model$variables, unlist(lapply(ObsObjs, function(lst) lst$model$variables)),
+  ProcObj$model$universals, unlist(lapply(ObsObjs, function(lst) lst$model$universals))
+  ))
+MonitorVars <- AllVars[grep("alpha|beta", AllVars)]
 
 # The moment of truth....
 modelCheck("GentianAll.txt")
 modelData("GentianAllData.txt")
-modelCompile(1)
+modelCompile(2)
+modelGenInits()
+
+modelUpdate(10000)
+samplesSet(MonitorVars)
+modelUpdate(10000)
+
+samplesStats('*')
+samplesHistory('*')
+samplesDensity('*')
+
+

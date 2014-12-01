@@ -102,13 +102,15 @@ Data=list(y= structure(.Data= c(0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0,
 
 # Re-format, and write to a file.
 OccObs <- data.frame(
-  Site=rep(1:Data$R,Data$T),
-  Visit=rep(1:Data$T, each=Data$R),
-  Occ=c(Data$y),
+#   site=rep(1:Data$R,Data$T),
+#  Visit=rep(1:Data$T, each=Data$R),
+  site=rep(1:Data$R,each=Data$T),
+  Visit=rep(1:Data$T, Data$R),
+  y=c(Data$y),
   experience=c(Data$experience)
 )
 SiteVars=data.frame(
-  Site=1:Data$R,
+  site=1:Data$R,
   wetness=Data$wetness
 )
 write.csv(OccObs, file="GentiansObs.csv")
@@ -130,7 +132,7 @@ ObservationModel=function() {
     y.tag[i.tag] ~ dbern(eff.tag[i.tag])  
     eff.tag[i.tag] <- z.univ[site.tag[i.tag]] * p.tag[i.tag]
     #    logit(p.tag[i.tag]) <- alpha.tag + beta1.tag * wetness[site.tag[i.tag]] + beta2.tag * experience[i.tag]
-    logit(p.tag[i.tag]) <- alpha.tag + beta1.tag * wetness2.univ[i.tag] + beta2.tag * experience.univ[i.tag]
+    logit(p.tag[i.tag]) <- alpha.tag + beta1.tag * wetness2.tag[i.tag] + beta2.tag * experience.tag[i.tag]
   }
 }
 
