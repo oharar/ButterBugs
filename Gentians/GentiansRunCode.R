@@ -94,7 +94,7 @@ modelData("GentianAllData.txt")
 modelCompile(2)
 modelGenInits()
 
-modelUpdate(5000)
+modelUpdate(10000)
 samplesSet(MonitorVars)
 modelUpdate(10000)
 

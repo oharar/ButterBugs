@@ -44,9 +44,14 @@ FormatModel <- function(filename, tag) {
 # Input:
 #   obj: list produced by FormatModel() (above)
 # Output:
-#   
-obj$DataToModel[[obj$model$maxIndices]] <- Lengths[unique(WhMaxInd)]
-
+#   Input obj plus the following:
+#    model: List of 5:
+#      model: Character string of the model
+#      variables: character vector of local variables
+#      universals: character vector of global variables
+#      Indices: character vector of indices in loops
+#      maxIndices: character vector of upper limit of inices
+#    DataToModel: List of data.
 GetModel <- function(obj) {
   # Read in model
   obj$model <- FormatModel(filename=obj$modelfile, tag=obj$tag)
