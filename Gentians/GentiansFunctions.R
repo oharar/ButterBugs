@@ -1,10 +1,21 @@
+# Function to load a sub-model, parse the code and format it by adding tags and extracting variable names
+# Inputs:
+#   - data: data, as a list
+#   - filename: name of file with sub-model. This should be a valid BUGS model in its own right
+#   - tag: tag name to use for this sub-model. Each tag name should be unique
+# Output:
+#   - list with the following items:
+#       - model: model string
+#       - variables: vector of names of variables local to the sub-model. These should have .tag in the input submodel
+#       - universals: vector of names of variables common to several sub-models. These should have .univ in the input submodel
+#       - Indices: vector of indices used in loops. These should have .index in the input submodel
+#       - maxIndices: vector of upper limits of indices used in loops. These should have .tag in the input submodel
+
 FormatModel <- function(filename, tag) {
   proc.mod <- scan(filename, what="character", sep="\n")
-  # Extract variable names (need to parse correctly)
+# Extract variable names (need to parse correctly)
   vars.str <- proc.mod[grep(".tag", proc.mod, fixed=TRUE)]
-  # str <- unlist(strsplit(vars.str, "[ \\(\\)]"))
   str <- unlist(strsplit(vars.str, "[]\\[ \\:\\(\\)]"))
-  # Don't need all of these (yet!)
   vars.tag <- unique(str[grep(".tag", str)])
   vars.index <- unique(str[grep(".index", str)])
   vars.univ <- unique(str[grep(".univ", str)])
@@ -28,10 +39,15 @@ FormatModel <- function(filename, tag) {
   mod
 }
 
+
 # Function to get object model and data, and format them
+# Input:
+#   obj: list produced by FormatModel() (above)
+# Output:
+#   
+obj$DataToModel[[obj$model$maxIndices]] <- Lengths[unique(WhMaxInd)]
+
 GetModel <- function(obj) {
-  #  obj <- procobj
-  #  obj <- Obslist[[1]]
   # Read in model
   obj$model <- FormatModel(filename=obj$modelfile, tag=obj$tag)
   
