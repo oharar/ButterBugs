@@ -21,7 +21,6 @@
 #   - modelfile: file with model
 #   - tag: unique tag
 
-setwd("Gentians")
 library(BRugs)
 source("GentiansFunctions.R")
 
